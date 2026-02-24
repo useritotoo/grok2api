@@ -109,6 +109,7 @@ export function buildConversationPayload(args: {
         temporary: true,
         modelName: "grok-3",
         message: prompt,
+        fileAttachments: imgIds,
         toolOverrides: { videoGen: true },
         enableSideBySide: true,
         responseMetadata: {
