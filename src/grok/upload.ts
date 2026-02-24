@@ -1,6 +1,7 @@
 import type { GrokSettings } from "../settings";
 import { getDynamicHeaders } from "./headers";
 import { arrayBufferToBase64 } from "../utils/base64";
+import type { Env } from "../env";
 
 const UPLOAD_API = "https://grok.com/rest/app-chat/upload-file";
 
@@ -35,12 +36,24 @@ export async function uploadImage(
   imageInput: string,
   cookie: string,
   settings: GrokSettings,
+  kvCache?: Env["KV_CACHE"],
 ): Promise<{ fileId: string; fileUri: string }> {
   let base64 = "";
   let mime = MIME_DEFAULT;
   let filename = "image.jpg";
 
-  if (isUrl(imageInput)) {
+  const selfUrlMatch = imageInput.match(/\/images\/(upload-[^?#]+)/) || imageInput.match(/\/v1\/files\/image\/(upload-[^?#]+)/);
+  if (selfUrlMatch && kvCache) {
+    const internalKey = `image/${decodeURIComponent(selfUrlMatch[1]!)}`;
+    const cached = await kvCache.getWithMetadata<{ contentType?: string }>(internalKey, { type: "arrayBuffer" });
+    if (cached?.value) {
+      base64 = arrayBufferToBase64(cached.value);
+      mime = cached.metadata?.contentType || MIME_DEFAULT;
+      filename = `image.${guessExtFromMime(mime)}`;
+    } else {
+      throw new Error(`无法获取本地上传的参考图(可能已过期或跨节点同步延迟)，请重新上传`);
+    }
+  } else if (isUrl(imageInput)) {
     const r = await fetch(imageInput, { redirect: "follow" });
     if (!r.ok) throw new Error(`下载图片失败: ${r.status}`);
     mime = r.headers.get("content-type")?.split(";")[0] ?? MIME_DEFAULT;
