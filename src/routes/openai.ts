@@ -1136,8 +1136,8 @@ function resolveImageResponseFormatByMethodOrError(
   const normalizedDefault = String(defaultMode || "url").trim().toLowerCase();
   const effectiveDefault =
     missing &&
-    imageMethod === IMAGE_METHOD_IMAGINE_WS_EXPERIMENTAL &&
-    normalizedDefault === "url"
+      imageMethod === IMAGE_METHOD_IMAGINE_WS_EXPERIMENTAL &&
+      normalizedDefault === "url"
       ? "b64_json"
       : defaultMode;
   return parseResponseFormatOrError(raw, effectiveDefault);
@@ -1252,7 +1252,7 @@ openAiRoutes.post("/chat/completions", async (c) => {
       const imgInputs = isVideoModel && images.length > 1 ? images.slice(0, 1) : images;
 
       try {
-        const uploads = await mapLimit(imgInputs, 5, (u) => uploadImage(u, cookie, settingsBundle.grok));
+        const uploads = await mapLimit(imgInputs, 5, (u) => uploadImage(u, cookie, settingsBundle.grok, c.env.KV_CACHE));
         const imgIds = uploads.map((u) => u.fileId).filter(Boolean);
         const imgUris = uploads.map((u) => u.fileUri).filter(Boolean);
 
@@ -1600,26 +1600,26 @@ openAiRoutes.post("/images/generations", async (c) => {
       Array.from({ length: calls }),
       Math.min(calls, Math.max(1, concurrency)),
       async () => {
-      const chosen = await selectBestToken(c.env.DB, requestedModel);
-      if (!chosen) throw new Error("No available token");
-      const cookie = buildCookie(chosen.token, cf);
-      try {
-        return await runImageCall({
-          requestModel: requestedModel,
-          prompt: imageCallPrompt("generation", prompt),
-          fileIds: [],
-          cookie,
-          settings: settingsBundle.grok,
-          responseFormat,
-          baseUrl,
-        });
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        await recordTokenFailure(c.env.DB, chosen.token, 500, msg.slice(0, 200));
-        await applyCooldown(c.env.DB, chosen.token, 500);
-        throw e;
-      }
-    },
+        const chosen = await selectBestToken(c.env.DB, requestedModel);
+        if (!chosen) throw new Error("No available token");
+        const cookie = buildCookie(chosen.token, cf);
+        try {
+          return await runImageCall({
+            requestModel: requestedModel,
+            prompt: imageCallPrompt("generation", prompt),
+            fileIds: [],
+            cookie,
+            settings: settingsBundle.grok,
+            responseFormat,
+            baseUrl,
+          });
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          await recordTokenFailure(c.env.DB, chosen.token, 500, msg.slice(0, 200));
+          await applyCooldown(c.env.DB, chosen.token, 500);
+          throw e;
+        }
+      },
     );
     const urls = dedupeImages(urlsNested.flat().filter(Boolean));
     const selected = pickImageResults(urls, n);
@@ -1763,7 +1763,7 @@ openAiRoutes.post("/images/edits", async (c) => {
       }
 
       const dataUrl = `data:${mime};base64,${arrayBufferToBase64(bytes)}`;
-      const uploaded = await uploadImage(dataUrl, cookie, settingsBundle.grok);
+      const uploaded = await uploadImage(dataUrl, cookie, settingsBundle.grok, c.env.KV_CACHE);
       if (uploaded.fileId) fileIds.push(uploaded.fileId);
       if (uploaded.fileUri) fileUris.push(uploaded.fileUri);
     }
