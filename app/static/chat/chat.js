@@ -1382,7 +1382,7 @@ async function generateVideo() {
     let imgUrls = [];
     if (videoAttachments.length) {
       showToast('上传图片中...', 'info');
-      imgUrls = await uploadImages(videoAttachments.slice(0, 1).map((x) => x.file));
+      imgUrls = await uploadImages(videoAttachments.map((x) => x.file));
     }
 
     const userContent = imgUrls.length
