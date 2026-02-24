@@ -1401,6 +1401,7 @@ openAiRoutes.post("/images/generations", async (c) => {
       concurrency?: unknown;
       stream?: unknown;
       response_format?: unknown;
+      aspect_ratio?: unknown;
     };
     const prompt = parseImagePrompt(body.prompt);
     const promptErr = nonEmptyPromptOrError(prompt);
@@ -1412,7 +1413,7 @@ openAiRoutes.post("/images/generations", async (c) => {
 
     const n = parseImageCount(body.n);
     const size = parseImageSize(body.size);
-    const aspectRatio = resolveAspectRatio(size);
+    const aspectRatio = body.aspect_ratio ? String(body.aspect_ratio).trim() : resolveAspectRatio(size);
     const concurrencyParsed = parseImageConcurrencyOrError(body.concurrency);
     if ("error" in concurrencyParsed) {
       return c.json(
