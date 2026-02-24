@@ -1249,7 +1249,7 @@ openAiRoutes.post("/chat/completions", async (c) => {
 
       const { content, images } = extractContent(body.messages as any);
       const isVideoModel = Boolean(cfg.is_video_model);
-      const imgInputs = isVideoModel && images.length > 1 ? images.slice(0, 1) : images;
+      const imgInputs = images;
 
       try {
         const uploads = await mapLimit(imgInputs, 5, (u) => uploadImage(u, cookie, settingsBundle.grok, c.env.KV_CACHE));
