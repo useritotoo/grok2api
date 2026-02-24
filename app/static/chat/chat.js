@@ -1,10 +1,11 @@
-﻿const STORAGE_KEY = 'grok2api_user_api_key';
+const STORAGE_KEY = 'grok2api_user_api_key';
 
 let currentTab = 'chat';
 let models = [];
 let chatMessages = [];
 let chatAttachments = []; // { file, previewUrl }
 let videoAttachments = [];
+let imageAttachments = [];
 let imageGenerationMethod = 'legacy';
 let imageGenerationExperimental = false;
 let imageContinuousSockets = [];
@@ -313,7 +314,7 @@ async function init() {
           localStorage.setItem(STORAGE_KEY, k);
         }
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   const saved = localStorage.getItem(STORAGE_KEY) || '';
@@ -351,10 +352,17 @@ function bindFileInputs() {
     addAttachments('video', files);
     q('video-file').value = '';
   });
+
+  q('image-file')?.addEventListener('change', () => {
+    const files = Array.from(q('image-file').files || []);
+    if (!files.length) return;
+    addAttachments('image', files);
+    q('image-file').value = '';
+  });
 }
 
 function addAttachments(kind, files) {
-  const list = kind === 'video' ? videoAttachments : chatAttachments;
+  const list = kind === 'video' ? videoAttachments : kind === 'image' ? imageAttachments : chatAttachments;
   files.forEach((f) => {
     if (!String(f.type || '').toLowerCase().startsWith('image/')) return;
     const url = URL.createObjectURL(f);
@@ -364,9 +372,9 @@ function addAttachments(kind, files) {
 }
 
 function renderAttachments(kind) {
-  const list = kind === 'video' ? videoAttachments : chatAttachments;
-  const info = kind === 'video' ? q('video-attach-info') : q('chat-attach-info');
-  const box = kind === 'video' ? q('video-attach-preview') : q('chat-attach-preview');
+  const list = kind === 'video' ? videoAttachments : kind === 'image' ? imageAttachments : chatAttachments;
+  const info = kind === 'video' ? q('video-attach-info') : kind === 'image' ? q('image-attach-info') : q('chat-attach-info');
+  const box = kind === 'video' ? q('video-attach-preview') : kind === 'image' ? q('image-attach-preview') : q('chat-attach-preview');
   info.textContent = list.length ? `已选择 ${list.length} 张图片` : '';
   box.innerHTML = '';
   if (!list.length) {
@@ -379,7 +387,7 @@ function renderAttachments(kind) {
     div.className = 'attach-item';
     div.innerHTML = `<img src="${it.previewUrl}" alt="img"><button title="移除">×</button>`;
     div.querySelector('button').addEventListener('click', () => {
-      try { URL.revokeObjectURL(it.previewUrl); } catch (e) {}
+      try { URL.revokeObjectURL(it.previewUrl); } catch (e) { }
       list.splice(idx, 1);
       renderAttachments(kind);
     });
@@ -586,7 +594,7 @@ function openImageContinuousSocket(socketIndex, runToken, prompt, aspectRatio, a
 
   ws.onopen = () => {
     if (!imageContinuousRunning || runToken !== imageContinuousRunToken || getImageRunMode() !== 'continuous') {
-      try { ws.close(1000, 'stale'); } catch (e) {}
+      try { ws.close(1000, 'stale'); } catch (e) { }
       return;
     }
     clearImageContinuousError();
@@ -700,12 +708,12 @@ function stopImageContinuous() {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'stop' }));
       }
-    } catch (e) {}
+    } catch (e) { }
     try {
       if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
         ws.close(1000, 'client stop');
       }
-    } catch (e) {}
+    } catch (e) { }
     state.closed = true;
     state.active = false;
   });
@@ -788,7 +796,7 @@ async function refreshImageGenerationMethod() {
       imageGenerationMethod = method || 'legacy';
       imageGenerationExperimental = isExperimentalImageMethod(imageGenerationMethod);
     }
-  } catch (e) {}
+  } catch (e) { }
 
   if (!imageGenerationExperimental) {
     stopImageContinuous();
@@ -897,6 +905,10 @@ function pickVideoImage() {
   q('video-file').click();
 }
 
+function pickImagineImage() {
+  q('image-file')?.click();
+}
+
 async function uploadImages(files) {
   const headers = buildApiHeaders();
   if (!headers.Authorization) throw new Error('Missing API Key');
@@ -982,7 +994,7 @@ async function sendChat() {
     showUserMsg('user', prompt || '[图片]');
     q('chat-input').value = '';
     chatAttachments.forEach((a) => {
-      try { URL.revokeObjectURL(a.previewUrl); } catch (e) {}
+      try { URL.revokeObjectURL(a.previewUrl); } catch (e) { }
     });
     chatAttachments = [];
     renderAttachments('chat');
@@ -1045,7 +1057,7 @@ async function streamChat(body, bubbleEl, commitHistory = true) {
           renderContent(bubbleEl, acc, false);
           q('chat-messages').scrollTop = q('chat-messages').scrollHeight;
         }
-      } catch (e) {}
+      } catch (e) { }
     }
   }
 
@@ -1123,7 +1135,19 @@ async function streamImage(body, headers) {
     headers,
     body: JSON.stringify({ ...body, stream: true }),
   });
+  return _handleStreamImageResponse(res);
+}
 
+async function streamImageFromFormData(url, formData, headers) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+  return _handleStreamImageResponse(res);
+}
+
+async function _handleStreamImageResponse(res) {
   if (!res.ok || !res.body) {
     const t = await res.text().catch(() => '');
     throw new Error(`HTTP ${res.status}: ${t.slice(0, 200)}`);
@@ -1192,9 +1216,9 @@ async function streamImage(body, headers) {
 
 async function generateImage() {
   const prompt = String(q('image-prompt').value || '').trim();
-  if (!prompt) return showToast('请输入 prompt', 'warning');
+  if (!prompt && !imageAttachments.length) return showToast('请输入 prompt 或上传参考图', 'warning');
 
-  const headers = { ...buildApiHeaders(), 'Content-Type': 'application/json' };
+  const headers = { ...buildApiHeaders() };
   if (!headers.Authorization) return showToast('请先填写 API Key', 'warning');
 
   if (imageGenerationExperimental && getImageRunMode() === 'continuous') {
@@ -1204,7 +1228,8 @@ async function generateImage() {
 
   stopImageContinuous();
 
-  const model = String(q('model-select').value || 'grok-imagine-1.0').trim();
+  const isEditMode = imageAttachments.length > 0;
+  const model = isEditMode ? 'grok-imagine-1.0-edit' : String(q('model-select').value || 'grok-imagine-1.0').trim();
   const n = Math.max(1, Math.min(10, Math.floor(Number(q('image-n').value || 1) || 1)));
   const stream = Boolean(q('stream-toggle').checked);
   const useStream = stream && n <= 2;
@@ -1213,43 +1238,78 @@ async function generateImage() {
   q('image-results').innerHTML = '';
   showToast('生成中...', 'info');
 
-  const reqBody = { prompt, model, n, size, concurrency };
   try {
     if (stream && !useStream) {
       showToast('n > 2 disables stream and falls back to non-stream mode.', 'warning');
     }
 
-    if (useStream) {
-      const rendered = await streamImage(reqBody, headers);
-      if (!rendered) throw new Error('No image generated');
-      return;
-    }
+    let items = [];
 
-    const res = await fetch('/v1/images/generations', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ ...reqBody, stream: false }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data?.error?.message || data?.detail || `HTTP ${res.status}`);
-
-    const items = Array.isArray(data?.data) ? data.data : [];
-    if (!items.length) throw new Error('No image generated');
-
-    let rendered = 0;
-    items.forEach((it, idx) => {
-      const src = pickImageSrc(it);
-      const card = createImageCard(idx);
-      q('image-results').appendChild(card);
-      if (!src) {
-        updateImageCardCompleted(card, '', true);
+    if (isEditMode) {
+      if (!prompt) {
+        showToast('上传了图片后也必须填写 prompt', 'error');
         return;
       }
-      rendered += 1;
-      updateImageCardCompleted(card, src, false);
-    });
 
-    if (!rendered) throw new Error('Image data is empty or unsupported');
+      const formData = new FormData();
+      formData.append('prompt', prompt);
+      formData.append('model', model);
+      formData.append('n', String(n));
+      formData.append('stream', String(useStream));
+      imageAttachments.forEach(att => formData.append('image', att.file));
+
+      if (useStream) {
+        // stream for edit is essentially the same as streamImage but post to edits endpoint and pass FormData
+        const rendered = await streamImageFromFormData('/v1/images/edits', formData, headers);
+        if (!rendered) throw new Error('No image generated');
+      } else {
+        const res = await fetch('/v1/images/edits', { method: 'POST', headers, body: formData });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error?.message || data?.detail || `HTTP ${res.status}`);
+        items = Array.isArray(data?.data) ? data.data : [];
+        if (!items.length) throw new Error('No image generated');
+      }
+    } else {
+      headers['Content-Type'] = 'application/json';
+      const reqBody = { prompt, model, n, size, concurrency };
+
+      if (useStream) {
+        const rendered = await streamImage(reqBody, headers);
+        if (!rendered) throw new Error('No image generated');
+      } else {
+        const res = await fetch('/v1/images/generations', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ ...reqBody, stream: false }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.error?.message || data?.detail || `HTTP ${res.status}`);
+        items = Array.isArray(data?.data) ? data.data : [];
+        if (!items.length) throw new Error('No image generated');
+      }
+    }
+
+    if (!useStream && items.length) {
+      let rendered = 0;
+      items.forEach((it, idx) => {
+        const src = pickImageSrc(it);
+        const card = createImageCard(idx);
+        q('image-results').appendChild(card);
+        if (!src) {
+          updateImageCardCompleted(card, '', true);
+          return;
+        }
+        rendered += 1;
+        updateImageCardCompleted(card, src, false);
+      });
+      if (!rendered) throw new Error('Image data is empty or unsupported');
+    }
+
+    imageAttachments.forEach((a) => {
+      try { URL.revokeObjectURL(a.previewUrl); } catch (e) { }
+    });
+    imageAttachments = [];
+    renderAttachments('image');
   } catch (e) {
     showToast('生图失败: ' + (e?.message || e), 'error');
   }
@@ -1300,7 +1360,7 @@ async function generateVideo() {
     }
 
     videoAttachments.forEach((a) => {
-      try { URL.revokeObjectURL(a.previewUrl); } catch (e) {}
+      try { URL.revokeObjectURL(a.previewUrl); } catch (e) { }
     });
     videoAttachments = [];
     renderAttachments('video');
@@ -1338,7 +1398,7 @@ async function streamVideo(body, bubbleEl) {
           acc += delta;
           renderContent(bubbleEl, acc, false);
         }
-      } catch (e) {}
+      } catch (e) { }
     }
   }
 }
