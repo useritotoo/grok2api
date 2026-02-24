@@ -489,8 +489,6 @@ function updateImageModeUI() {
   }
 
   if (hint) hint.classList.toggle('hidden', !isExperimental);
-  if (aspectWrap) aspectWrap.classList.toggle('hidden', !isExperimental);
-  if (concurrencyWrap) concurrencyWrap.classList.toggle('hidden', !isExperimental);
   if (runModeWrap) runModeWrap.classList.toggle('hidden', !isExperimental);
   if (runMode && !isExperimental) runMode.value = 'single';
 
@@ -530,7 +528,7 @@ function appendWaterfallImage(item, connectionIndex) {
   const card = document.createElement('div');
   card.className = 'waterfall-item';
   card.innerHTML = `
-    <img alt="image" src="${src}" />
+    <img alt="image" src="${src}" onclick="openLightbox(this.src)" style="cursor: zoom-in;" />
     <div class="waterfall-meta">
       <span>#${seq} 路 WS${connectionIndex + 1}</span>
       <span>${ratio || '-'} 路 ${elapsed > 0 ? `${elapsed}ms` : '-'}</span>
@@ -1114,6 +1112,8 @@ function updateImageCardCompleted(card, src, failed) {
   const img = document.createElement('img');
   img.alt = 'image';
   img.src = src;
+  img.style.cursor = 'zoom-in';
+  img.onclick = () => openLightbox(img.src);
   bindRetryableImage(img);
   card.insertBefore(img, card.firstChild);
 
@@ -1123,10 +1123,57 @@ function updateImageCardCompleted(card, src, failed) {
 function buildImageRequestConfig() {
   const ratio = String(q('image-aspect')?.value || '2:3');
   const concurrency = Math.max(1, Math.min(3, Math.floor(Number(q('image-concurrency')?.value || 1) || 1)));
-  if (!imageGenerationExperimental) {
-    return { size: '1024x1024', concurrency: 1 };
-  }
   return { size: ratio, concurrency };
+}
+
+function openLightbox(src) {
+  let overlay = document.getElementById('lightbox-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'lightbox-overlay';
+    overlay.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 opacity-0 transition-opacity duration-300';
+    overlay.style.backdropFilter = 'blur(4px)';
+    overlay.onclick = () => closeLightbox();
+
+    const img = document.createElement('img');
+    img.id = 'lightbox-img';
+    img.className = 'max-w-full max-h-full object-contain scale-95 transition-transform duration-300 rounded-md';
+    img.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.5)';
+    img.onclick = (e) => e.stopPropagation();
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'absolute top-4 right-4 text-white/70 hover:text-white bg-black/50 hover:bg-black/70 rounded-full w-10 h-10 flex items-center justify-center transition-colors text-2xl leading-none';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.onclick = (e) => {
+      e.stopPropagation();
+      closeLightbox();
+    };
+
+    overlay.appendChild(img);
+    overlay.appendChild(closeBtn);
+    document.body.appendChild(overlay);
+  }
+
+  const imgEL = document.getElementById('lightbox-img');
+  imgEL.src = src;
+
+  overlay.style.display = 'flex';
+  void overlay.offsetWidth;
+  overlay.classList.replace('opacity-0', 'opacity-100');
+  imgEL.classList.replace('scale-95', 'scale-100');
+}
+
+function closeLightbox() {
+  const overlay = document.getElementById('lightbox-overlay');
+  if (!overlay) return;
+  const imgEL = document.getElementById('lightbox-img');
+
+  overlay.classList.replace('opacity-100', 'opacity-0');
+  if (imgEL) imgEL.classList.replace('scale-100', 'scale-95');
+
+  setTimeout(() => {
+    overlay.style.display = 'none';
+  }, 300);
 }
 
 async function streamImage(body, headers) {
