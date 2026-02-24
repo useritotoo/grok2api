@@ -17,9 +17,19 @@
 
   <header class="border-b border-[var(--border)] bg-[var(--bg)]/80 backdrop-blur-md sticky top-0 z-10">
     <div class="chat-public-header max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="font-semibold tracking-tight">Grok2API</div>
-        <div class="text-xs text-[var(--accents-5)]">在线聊天</div>
+      <div class="flex items-center gap-6">
+        <div class="flex items-center gap-3">
+          <div class="font-semibold tracking-tight">Grok2API</div>
+          <div class="text-xs text-[var(--accents-5)]">在线聊天</div>
+        </div>
+        <div class="hidden md:block h-4 w-px bg-[var(--border)]"></div>
+        <div class="hidden md:flex items-center gap-6">
+          <a href="/imagine" class="nav-link text-sm" data-nav="/imagine">Imagine 瀑布流</a>
+          <a href="/imagine-workbench" class="nav-link text-sm" data-nav="/imagine-workbench">图片编辑工作台</a>
+          <a href="/video" class="nav-link text-sm" data-nav="/video">Video 视频工作台</a>
+          <a href="/nsfw" class="nav-link text-sm" data-nav="/nsfw">NSFW 工作台</a>
+          <a href="/voice" class="nav-link text-sm" data-nav="/voice">LiveKit 陪聊</a>
+        </div>
       </div>
       <div class="chat-top-actions flex items-center gap-2">
         <a href="/login" class="geist-button-outline text-xs px-3 py-1.5">后台登录</a>
