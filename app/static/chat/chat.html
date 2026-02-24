@@ -7,8 +7,6 @@
   <title>Grok2API - 在线聊天</title>
   <link rel="icon" href="/static/favicon/favicon.ico">
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://cdn.jsdelivr.net/npm/geist@1.0.0/dist/fonts/geist-sans/style.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/geist@1.0.0/dist/fonts/geist-mono/style.css" rel="stylesheet">
   <link href="/static/common/common.css?v=3" rel="stylesheet">
   <link href="/static/chat/chat.css?v=4" rel="stylesheet">
   <link href="/static/common/toast.css" rel="stylesheet">
@@ -35,12 +33,12 @@
       <div class="card-title">连接配置</div>
       <div class="grid grid-cols-12 gap-3 items-end">
         <div class="col-span-12 md:col-span-5">
-          <label class="field-label">API Key（Bearer）</label>
+          <label class="field-label" for="api-key-input">API Key（Bearer）</label>
           <input id="api-key-input" type="password" class="geist-input font-mono" placeholder="sk-... 或你自定义的 Key" />
           <div class="text-xs text-[var(--accents-5)] mt-1">保存在浏览器本地，仅用于调用本服务 /v1/*。</div>
         </div>
         <div class="col-span-12 md:col-span-4">
-          <label class="field-label">模型</label>
+          <label class="field-label" for="model-select">模型</label>
           <select id="model-select" class="geist-input h-[34px]"></select>
         </div>
         <div class="col-span-6 md:col-span-1 flex items-center gap-2">
@@ -83,7 +81,7 @@
         </div>
         <div id="image-run-mode-wrap" class="grid grid-cols-12 gap-3 items-end mb-3 hidden">
           <div class="col-span-12 md:col-span-3">
-            <label class="field-label">运行模式</label>
+            <label class="field-label" for="image-run-mode">运行模式</label>
             <select id="image-run-mode" class="geist-input h-[34px]">
               <option value="single">single（单次）</option>
               <option value="continuous">continuous（持续）</option>
@@ -91,41 +89,46 @@
           </div>
         </div>
         <div class="grid grid-cols-12 gap-3 items-end">
-          <div class="col-span-12 md:col-span-4">
-            <label class="field-label">Prompt</label>
+          <div class="col-span-12 md:col-span-7">
+            <label class="field-label" for="image-prompt">Prompt</label>
             <textarea id="image-prompt" class="geist-input h-24" placeholder="描述你要生成的图片..."></textarea>
           </div>
-          <div id="image-n-wrap" class="col-span-6 md:col-span-2">
-            <label class="field-label">数量 n</label>
-            <input id="image-n" type="number" class="geist-input" min="1" max="10" value="1" />
-          </div>
-          <div id="image-aspect-wrap" class="col-span-6 md:col-span-2 hidden">
-            <label class="field-label">宽高比</label>
-            <select id="image-aspect" class="geist-input h-[34px]">
-              <option value="2:3">2:3</option>
-              <option value="1:1">1:1</option>
-              <option value="3:2">3:2</option>
-              <option value="16:9">16:9</option>
-              <option value="9:16">9:16</option>
-            </select>
-          </div>
-          <div id="image-concurrency-wrap" class="col-span-6 md:col-span-2 hidden">
-            <label class="field-label">并发数量</label>
-            <select id="image-concurrency" class="geist-input h-[34px]">
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-            </select>
-          </div>
-          <div id="image-generate-wrap" class="col-span-12 md:col-span-2 flex justify-end">
-            <button id="image-generate-btn" class="geist-button text-xs px-4" onclick="generateImage()">生成</button>
+          <div class="col-span-12 md:col-span-5">
+            <div class="grid grid-cols-2 gap-3">
+              <div id="image-n-wrap">
+                <label class="field-label" for="image-n">数量 n</label>
+                <input id="image-n" type="number" class="geist-input" min="1" max="10" value="1" />
+              </div>
+              <div id="image-aspect-wrap" class="hidden">
+                <label class="field-label" for="image-aspect">宽高比</label>
+                <select id="image-aspect" class="geist-input h-[34px]">
+                  <option value="2:3">2:3</option>
+                  <option value="1:1">1:1</option>
+                  <option value="3:2">3:2</option>
+                  <option value="16:9">16:9</option>
+                  <option value="9:16">9:16</option>
+                </select>
+              </div>
+              <div id="image-concurrency-wrap" class="hidden">
+                <label class="field-label" for="image-concurrency">并发数量</label>
+                <select id="image-concurrency" class="geist-input h-[34px]">
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                </select>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="composer mt-4">
+
+        <div class="composer mt-4" id="image-generate-wrap">
           <div class="composer-row">
             <input id="image-file" type="file" accept="image/*" class="hidden" />
             <button class="geist-button-outline text-xs px-3" onclick="pickImagineImage()">上传参考图（可选）</button>
             <div id="image-attach-info" class="text-xs text-[var(--accents-5)]"></div>
+            <div class="flex-1"></div>
+            <button id="image-generate-btn" class="geist-button text-xs px-4 composer-primary"
+              onclick="generateImage()">生成</button>
           </div>
           <div id="image-attach-preview" class="attach-preview hidden mt-2"></div>
         </div>
@@ -154,13 +157,13 @@
       <div id="panel-video" class="panel hidden">
         <div class="grid grid-cols-12 gap-3 items-end">
           <div class="col-span-12 md:col-span-7">
-            <label class="field-label">Prompt</label>
+            <label class="field-label" for="video-prompt">Prompt</label>
             <textarea id="video-prompt" class="geist-input h-24" placeholder="描述你要生成的视频..."></textarea>
           </div>
           <div class="col-span-12 md:col-span-5">
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label class="field-label">比例</label>
+                <label class="field-label" for="video-aspect">比例</label>
                 <select id="video-aspect" class="geist-input h-[34px]">
                   <option value="3:2">3:2</option>
                   <option value="16:9">16:9</option>
@@ -170,18 +173,18 @@
                 </select>
               </div>
               <div>
-                <label class="field-label">时长（秒）</label>
+                <label class="field-label" for="video-length">时长（秒）</label>
                 <input id="video-length" type="number" class="geist-input" min="5" max="15" value="6" />
               </div>
               <div>
-                <label class="field-label">分辨率</label>
+                <label class="field-label" for="video-resolution">分辨率</label>
                 <select id="video-resolution" class="geist-input h-[34px]">
                   <option value="SD">SD</option>
                   <option value="HD">HD</option>
                 </select>
               </div>
               <div>
-                <label class="field-label">预设</label>
+                <label class="field-label" for="video-preset">预设</label>
                 <select id="video-preset" class="geist-input h-[34px]">
                   <option value="custom">custom</option>
                   <option value="normal">normal</option>
