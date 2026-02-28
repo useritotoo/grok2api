@@ -1,4 +1,4 @@
-﻿let apiKey = '';
+let apiKey = '';
 let allTokens = {};
 let flatTokens = [];
 let isBatchProcessing = false;
@@ -15,6 +15,8 @@ let liveStatsTimer = null;
 let isWorkersRuntime = false;
 let isNsfwRefreshAllRunning = false;
 
+let currentPage = 1;
+const pageSize = 50;
 let displayTokens = [];
 const filterState = {
   typeSso: false,
@@ -159,6 +161,7 @@ function applyFilters() {
   if (resultEl) {
     resultEl.textContent = String(displayTokens.length);
   }
+  currentPage = 1;
 }
 
 function onFilterChange() {
@@ -398,25 +401,31 @@ function renderTable() {
   const tbody = document.getElementById('token-table-body');
   const loading = document.getElementById('loading');
   const emptyState = document.getElementById('empty-state');
+  const paginationControls = document.getElementById('pagination-controls');
 
   tbody.innerHTML = '';
   loading.classList.add('hidden');
 
-  if (flatTokens.length === 0) {
-    emptyState.innerText = '暂无 Token，请点击右上角导入或添加。';
+  if (flatTokens.length === 0 || displayTokens.length === 0) {
+    emptyState.innerText = flatTokens.length === 0 ? '暂无 Token，请点击右上角导入或添加。' : '当前筛选无结果。';
     emptyState.classList.remove('hidden');
-    return;
-  }
-  if (displayTokens.length === 0) {
-    emptyState.innerText = '当前筛选无结果。';
-    emptyState.classList.remove('hidden');
+    if (paginationControls) paginationControls.classList.add('hidden');
     updateSelectionState();
     return;
   }
-  emptyState.innerText = '暂无 Token，请点击右上角导入或添加。';
-  emptyState.classList.add('hidden');
 
-  displayTokens.forEach((item) => {
+  emptyState.classList.add('hidden');
+  if (paginationControls) paginationControls.classList.remove('hidden');
+
+  const totalPages = Math.ceil(displayTokens.length / pageSize) || 1;
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, displayTokens.length);
+  const paginatedTokens = displayTokens.slice(startIndex, endIndex);
+
+  paginatedTokens.forEach((item) => {
     const tr = document.createElement('tr');
     const tokenKey = getTokenKey(item.token);
     const tokenEncoded = encodeURIComponent(item.token);
@@ -494,14 +503,47 @@ function renderTable() {
     tbody.appendChild(tr);
   });
 
+  renderPaginationControls(totalPages);
   updateSelectionState();
+}
+
+function renderPaginationControls(totalPages) {
+  const totalCountEl = document.getElementById('page-total-count');
+  const currentEl = document.getElementById('page-current');
+  const totalEl = document.getElementById('page-total');
+  const btnPrev = document.getElementById('btn-prev-page');
+  const btnNext = document.getElementById('btn-next-page');
+
+  if (totalCountEl) totalCountEl.innerText = displayTokens.length;
+  if (currentEl) currentEl.innerText = currentPage;
+  if (totalEl) totalEl.innerText = totalPages;
+
+  if (btnPrev) btnPrev.disabled = (currentPage <= 1);
+  if (btnNext) btnNext.disabled = (currentPage >= totalPages);
+}
+
+function changePage(delta) {
+  const totalPages = Math.ceil(displayTokens.length / pageSize) || 1;
+  let newPage = currentPage + delta;
+  if (newPage < 1) newPage = 1;
+  if (newPage > totalPages) newPage = totalPages;
+
+  if (newPage !== currentPage) {
+    currentPage = newPage;
+    renderTable();
+  }
 }
 
 // Selection Logic
 function toggleSelectAll() {
   const checkbox = document.getElementById('select-all');
   const checked = checkbox.checked;
-  const visibleKeys = new Set(displayTokens.map((t) => getTokenKey(t.token)));
+
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, displayTokens.length);
+  const paginatedTokens = displayTokens.slice(startIndex, endIndex);
+
+  const visibleKeys = new Set(paginatedTokens.map((t) => getTokenKey(t.token)));
   flatTokens.forEach((t) => {
     if (visibleKeys.has(getTokenKey(t.token))) {
       t._selected = checked;
@@ -519,12 +561,21 @@ function toggleSelectByKey(tokenKey) {
 
 function updateSelectionState() {
   const selectedCount = flatTokens.filter(t => t._selected).length;
-  const allSelected = displayTokens.length > 0 && displayTokens.every((t) => t._selected);
+
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, displayTokens.length);
+  const paginatedTokens = displayTokens.slice(startIndex, endIndex);
+
+  const allSelected = paginatedTokens.length > 0 && paginatedTokens.every((t) => t._selected);
 
   const selectAll = document.getElementById('select-all');
   if (selectAll) selectAll.checked = allSelected;
-  document.getElementById('selected-count').innerText = selectedCount;
-  setActionButtonsState();
+  if (document.getElementById('selected-count')) {
+    document.getElementById('selected-count').innerText = selectedCount;
+  }
+  if (typeof setActionButtonsState === 'function') {
+    setActionButtonsState();
+  }
 }
 
 // Actions
