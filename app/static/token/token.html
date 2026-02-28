@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 
 <head>
@@ -153,6 +153,22 @@
         <div id="empty-state" class="hidden text-center py-12 text-[var(--accents-4)]">
           暂无 Token，请点击右上角导入或添加。
         </div>
+
+        <!-- Pagination Controls -->
+        <div id="pagination-controls"
+          class="hidden flex justify-between items-center px-4 py-3 border-t border-[var(--border)] bg-gray-50">
+          <div class="text-xs text-[var(--accents-5)]">
+            共 <span id="page-total-count">0</span> 条，每页 <span id="page-size-label">50</span> 条
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btn-prev-page" onclick="changePage(-1)" class="geist-button-outline text-xs px-2 h-7"
+              disabled>上一页</button>
+            <span class="text-xs text-[var(--accents-5)] w-16 text-center"><span id="page-current">1</span> / <span
+                id="page-total">1</span></span>
+            <button id="btn-next-page" onclick="changePage(1)" class="geist-button-outline text-xs px-2 h-7"
+              disabled>下一页</button>
+          </div>
+        </div>
       </div>
 
       <!-- Batch Actions Bar (Floating Bottom) -->
@@ -253,14 +269,16 @@
             </div>
           </div>
           <div class="text-xs text-[var(--accents-5)]">
-            本地/Docker：可自动启动本地 Turnstile Solver（默认 5 线程）。Cloudflare：需配置 YesCaptcha 或公网 Solver，且 accounts.x.ai 可能触发 Cloudflare Challenge 导致失败。
+            本地/Docker：可自动启动本地 Turnstile Solver（默认 5 线程）。Cloudflare：需配置 YesCaptcha 或公网 Solver，且 accounts.x.ai 可能触发
+            Cloudflare Challenge 导致失败。
           </div>
           <div id="auto-register-status" class="text-xs text-[var(--accents-5)] hidden"></div>
           <pre id="auto-register-logs"
             class="hidden text-xs font-mono whitespace-pre-wrap bg-[var(--accents-1)] border border-[var(--border)] rounded-md p-2 max-h-40 overflow-auto"></pre>
           <div class="flex justify-end gap-2 pt-2">
             <button onclick="closeAddModal()" class="geist-button-outline text-xs px-3">取消</button>
-            <button id="auto-register-stop-btn" onclick="stopAutoRegister()" class="geist-button-danger text-xs px-3 hidden">停止</button>
+            <button id="auto-register-stop-btn" onclick="stopAutoRegister()"
+              class="geist-button-danger text-xs px-3 hidden">停止</button>
             <button id="auto-register-btn" onclick="startAutoRegister()" class="geist-button text-xs px-3">开始注册</button>
           </div>
         </div>
@@ -290,8 +308,7 @@
         </div>
         <div>
           <label class="modal-label mb-1 block">Token 列表（每行一个）</label>
-          <textarea id="import-text" class="geist-input font-mono h-48"
-            placeholder="粘贴 Token，一行一个..."></textarea>
+          <textarea id="import-text" class="geist-input font-mono h-48" placeholder="粘贴 Token，一行一个..."></textarea>
         </div>
         <div class="flex justify-end gap-2 pt-2">
           <button onclick="closeImportModal()" class="geist-button-outline text-xs px-3">取消</button>
@@ -318,8 +335,7 @@
         <input type="hidden" id="edit-original-pool">
         <div>
           <label class="modal-label mb-1 block">Token</label>
-          <input type="text" id="edit-token-display" class="geist-input font-mono bg-gray-50 text-gray-500"
-            disabled>
+          <input type="text" id="edit-token-display" class="geist-input font-mono bg-gray-50 text-gray-500" disabled>
         </div>
         <div>
           <label class="modal-label mb-1 block">类型</label>
